@@ -108,30 +108,34 @@ func main() {
 	discord.AddHandler(func(session *discordgo.Session, message *discordgo.MessageCreate) {
 		go func(sess *discordgo.Session, msg *discordgo.MessageCreate) {
 			// 각 채널별로 init 과정을 실행할 수 있는 칸이 만들어졌는지 확인한다
-			if _, ok := didStart[message.ChannelID]; !ok {
-				didStart[message.ChannelID] = didStartType{
+			if _, ok := didStart[msg.ChannelID]; !ok {
+				didStart[msg.ChannelID] = didStartType{
 					lock: &sync.Mutex{},
 					did:  false,
 				}
 			}
 
 			// init 과정을 각 채널별로 실행했는지 기록한다
-			didStart[message.ChannelID].lock.Lock()
-			if !didStart[message.ChannelID].did {
+			didStart[msg.ChannelID].lock.Lock()
+			if !didStart[msg.ChannelID].did {
 				treatInitialStart(connInfo, sess, msg)
-				didStart[message.ChannelID] = didStartType{
-					lock: didStart[message.ChannelID].lock,
+				didStart[msg.ChannelID] = didStartType{
+					lock: didStart[msg.ChannelID].lock,
 					did:  true,
 				}
-				didStart[message.ChannelID].lock.Unlock()
+				didStart[msg.ChannelID].lock.Unlock()
 				// init 과정을 했다면 핸들러 함수를 종료한다
 				return
 			}
-			didStart[message.ChannelID].lock.Unlock()
+			didStart[msg.ChannelID].lock.Unlock()
 
 			// 들어오는 메시지 타입에 따라 실행 함수를 나눈다
 			switch {
-			case msg.Content == "?" && session.State.User.ID != message.Author.ID:
+			case msg.Content == "?" && sess.State.User.ID != msg.Author.ID:
+				// 명령어 그 자체는 즉시 삭제한다
+				if e := sess.ChannelMessageDelete(msg.ChannelID, msg.ID); e != nil {
+					log.Println(e)
+				}
 				result := "```"
 				result += ".   방금 쳤던 내 메시지 지우는 명령\n"
 				result += "..  자기가 쳤던거 전부 지우는 명령\n"
@@ -140,20 +144,20 @@ func main() {
 
 				sess.ChannelMessageSend(msg.ChannelID, result)
 
-			case msg.Content == "." && session.State.User.ID != message.Author.ID:
-				if session.State.User.ID == message.Author.ID {
+			case msg.Content == "." && sess.State.User.ID != msg.Author.ID:
+				if sess.State.User.ID == msg.Author.ID {
 					return
 				}
 				go treatDeleteSingle(connInfo, sess, msg)
 
-			case msg.Content == ".." && session.State.User.ID != message.Author.ID:
-				if session.State.User.ID == message.Author.ID {
+			case msg.Content == ".." && sess.State.User.ID != msg.Author.ID:
+				if sess.State.User.ID == msg.Author.ID {
 					return
 				}
 				go treatDeleteMe(connInfo, sess, msg)
 
-			case msg.Content == "..." && session.State.User.ID != message.Author.ID:
-				if session.State.User.ID == message.Author.ID {
+			case msg.Content == "..." && sess.State.User.ID != msg.Author.ID:
+				if sess.State.User.ID == msg.Author.ID {
 					return
 				}
 				go treatDeleteAll(connInfo, sess, msg)
