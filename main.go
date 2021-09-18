@@ -139,7 +139,7 @@ func main() {
 				result := "```"
 				result += ".   방금 쳤던 내 메시지 지우는 명령\n"
 				result += "..  자기가 쳤던거 전부 지우는 명령\n"
-				result += "... 그냥 전부 지우는 명령\n"
+				//result += "... 그냥 전부 지우는 명령\n"
 				result += "```"
 
 				sess.ChannelMessageSend(msg.ChannelID, result)
@@ -156,11 +156,13 @@ func main() {
 				}
 				go treatDeleteMe(connInfo, sess, msg)
 
-			case msg.Content == "..." && sess.State.User.ID != msg.Author.ID:
-				if sess.State.User.ID == msg.Author.ID {
-					return
-				}
-				go treatDeleteAll(connInfo, sess, msg)
+			/*
+				case msg.Content == "..." && sess.State.User.ID != msg.Author.ID:
+					if sess.State.User.ID == msg.Author.ID {
+						return
+					}
+					go treatDeleteAll(connInfo, sess, msg)
+			*/
 
 			default:
 				go treatNormalMessage(connInfo, sess, msg)
