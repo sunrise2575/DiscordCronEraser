@@ -4,7 +4,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-func treatNormalMessage(connInfo connInfoType, sess *discordgo.Session, msg *discordgo.MessageCreate) {
+func treatMessageCreate(connInfo connInfoType, sess *discordgo.Session, msg *discordgo.MessageCreate) {
 	db := connectMySQL(connInfo)
 	defer db.Close()
 

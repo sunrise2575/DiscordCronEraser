@@ -13,6 +13,7 @@ type connInfoType struct {
 	db, table     string
 }
 
+// sanitize string
 func san(in string) string {
 	return "`" + in + "`"
 }

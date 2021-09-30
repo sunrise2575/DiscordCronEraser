@@ -1,19 +1,13 @@
 package main
 
 import (
-	"log"
 	"strconv"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
 )
 
-func treatDeleteSingle(connInfo connInfoType, sess *discordgo.Session, msg *discordgo.MessageCreate) {
-	// 명령어 그 자체는 즉시 삭제한다
-	if e := sess.ChannelMessageDelete(msg.ChannelID, msg.ID); e != nil {
-		log.Println(e)
-	}
-
+func treatDeleteSingle(connInfo connInfoType, sess *discordgo.Session, msg *discordgo.Message) {
 	db := connectMySQL(connInfo)
 	defer db.Close()
 

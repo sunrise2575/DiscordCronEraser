@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 
@@ -24,8 +23,8 @@ func getTime(discordtime discordgo.Timestamp) string {
 	return temp.Format("2006-01-02 15:04:05.999999")
 }
 
-// 메인 함수가 종료될 때 실행되는 함수. 각 채널별로 봇 종료 메시지를 날린다
-func maindead(connInfo connInfoType, discord *discordgo.Session) {
+// 메인 함수가 종료될 때 실행되는 함수.
+func shutdownProcedure(connInfo connInfoType) {
 	db := connectMySQL(connInfo)
 	defer db.Close()
 
@@ -43,37 +42,21 @@ func maindead(connInfo connInfoType, discord *discordgo.Session) {
 		}
 		channelIDs = append(channelIDs, temp)
 	}
+}
 
-	for _, id := range channelIDs {
-		discord.ChannelMessageSend(id, "봇 종료!")
+func readFileAsString(path string) string {
+	out, e := ioutil.ReadFile(path)
+	if e != nil {
+		panic(e)
 	}
+	return string(out)
 }
 
 func main() {
-	// 비밀스러운 정보들 불러오기
-	tokenTemp, e := ioutil.ReadFile("token.txt")
-	if e != nil {
-		panic(e)
-	}
-	token := string(tokenTemp)
-
-	pwTemp, e := ioutil.ReadFile("password.txt")
-	if e != nil {
-		panic(e)
-	}
-	password := string(pwTemp)
-
-	// create discord session
-	discord, e := discordgo.New("Bot " + token)
-	if e != nil {
-		log.Fatalln("error creating Discord session,", e)
-		return
-	}
-
 	// MySQL 접속 정보
 	connInfo := connInfoType{
 		id:      "root",
-		pw:      password,
+		pw:      readFileAsString("mysql_password.txt"),
 		address: "127.0.0.1",
 		port:    "3306",
 		db:      "eraser_bot",
@@ -81,7 +64,14 @@ func main() {
 	}
 
 	initDB(connInfo)
-	log.Println("initDB 함수 완료")
+	log.Println("initialize DB complete")
+
+	// create discord session
+	discord, e := discordgo.New("Bot " + readFileAsString("./token.txt"))
+	if e != nil {
+		log.Fatalln("error creating Discord session,", e)
+		return
+	}
 
 	// 주기적으로 메시지를 지우기 위해 cronjob을 넣는다
 	c := cron.New(cron.WithSeconds())
@@ -91,91 +81,56 @@ func main() {
 		cronDelete(connInfo, discord, 60) // 60분 넘어가는 메시지를 지우기를 시도한다
 	})
 
-	// 메인 함수가 종료되면 실행될 것들
-	defer func() {
-		maindead(connInfo, discord)
-		c.Stop()
-		discord.Close()
-	}()
-
-	// init 과정을 실행할 수 있는 칸을 위한 틀 제작
-	type didStartType struct {
-		lock *sync.Mutex
-		did  bool
-	}
-	didStart := make(map[string]didStartType)
-
-	discord.AddHandler(func(session *discordgo.Session, message *discordgo.MessageCreate) {
-		go func(sess *discordgo.Session, msg *discordgo.MessageCreate) {
-			// 각 채널별로 init 과정을 실행할 수 있는 칸이 만들어졌는지 확인한다
-			if _, ok := didStart[msg.ChannelID]; !ok {
-				didStart[msg.ChannelID] = didStartType{
-					lock: &sync.Mutex{},
-					did:  false,
-				}
-			}
-
-			// init 과정을 각 채널별로 실행했는지 기록한다
-			didStart[msg.ChannelID].lock.Lock()
-			if !didStart[msg.ChannelID].did {
-				treatInitialStart(connInfo, sess, msg)
-				didStart[msg.ChannelID] = didStartType{
-					lock: didStart[msg.ChannelID].lock,
-					did:  true,
-				}
-				didStart[msg.ChannelID].lock.Unlock()
-				// init 과정을 했다면 핸들러 함수를 종료한다
-				return
-			}
-			didStart[msg.ChannelID].lock.Unlock()
-
-			// 들어오는 메시지 타입에 따라 실행 함수를 나눈다
-			switch {
-			case msg.Content == "?" && sess.State.User.ID != msg.Author.ID:
-				// 명령어 그 자체는 즉시 삭제한다
-				if e := sess.ChannelMessageDelete(msg.ChannelID, msg.ID); e != nil {
-					log.Println(e)
-				}
-				result := "```"
-				result += ".   방금 쳤던 내 메시지 지우는 명령\n"
-				result += "..  자기가 쳤던거 전부 지우는 명령\n"
-				//result += "... 그냥 전부 지우는 명령\n"
-				result += "```"
-
-				sess.ChannelMessageSend(msg.ChannelID, result)
-
-			case msg.Content == "." && sess.State.User.ID != msg.Author.ID:
-				if sess.State.User.ID == msg.Author.ID {
-					return
-				}
-				go treatDeleteSingle(connInfo, sess, msg)
-
-			case msg.Content == ".." && sess.State.User.ID != msg.Author.ID:
-				if sess.State.User.ID == msg.Author.ID {
-					return
-				}
-				go treatDeleteMe(connInfo, sess, msg)
-
-			/*
-				case msg.Content == "..." && sess.State.User.ID != msg.Author.ID:
-					if sess.State.User.ID == msg.Author.ID {
-						return
-					}
-					go treatDeleteAll(connInfo, sess, msg)
-			*/
-
-			default:
-				go treatNormalMessage(connInfo, sess, msg)
-			}
-
-		}(session, message)
-	})
+	commands := makeCommands(connInfo)
 
 	// 세팅을 다 했으니 세션을 연다
 	if e = discord.Open(); e != nil {
 		log.Fatalln("error opening connection,", e)
 		return
 	}
+
+	// 메인 함수가 종료되면 실행될 것들
+	defer func() {
+		shutdownProcedure(connInfo)
+		c.Stop()
+		discord.Close()
+		log.Println("bye")
+	}()
+
+	// Guild에 초대 / 접속했을 때 실행하는 부분
+	discord.AddHandler(func(session *discordgo.Session, event *discordgo.GuildCreate) {
+		// Guild에 허용된 채널 읽기
+		for _, channel := range event.Guild.Channels {
+			if channel.Type == discordgo.ChannelTypeGuildText {
+				permission, e := session.UserChannelPermissions(discord.State.User.ID, channel.ID)
+				if e != nil {
+					log.Println(e)
+				}
+				mustRequired := discordgo.PermissionViewChannel |
+					discordgo.PermissionSendMessages |
+					discordgo.PermissionManageMessages |
+					discordgo.PermissionReadMessageHistory
+
+				if permission&int64(mustRequired) == int64(mustRequired) {
+					treatInitialStart(connInfo, discord, channel)
+					log.Printf("initialize complete: [%v] in [%v]\n", channel.Name, event.Guild.Name)
+				}
+			}
+		}
+	})
+
+	discord.AddHandler(func(sess *discordgo.Session, msg *discordgo.MessageCreate) {
+		if cmd, ok := commands[msg.Content]; ok {
+			if e := sess.ChannelMessageDelete(msg.ChannelID, msg.ID); e != nil {
+				log.Println(e)
+			}
+			if msg.Author.ID != discord.State.User.ID {
+				cmd.Callback(sess, msg.Message)
+			}
+		} else {
+			treatMessageCreate(connInfo, sess, msg)
+		}
+	})
 
 	// Ctrl+C를 받아서 프로그램 자체를 종료하는 부분. os 신호를 받는다
 	log.Println("bot is now running. Press Ctrl+C to exit.")
@@ -185,5 +140,4 @@ func main() {
 		<-sc
 	}
 	log.Println("received Ctrl+C, please wait.")
-
 }
