@@ -54,6 +54,7 @@ func readFileAsString(path string) string {
 }
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	// MySQL 접속 정보
 	connInfo := connInfoType{
 		id:      "root",
