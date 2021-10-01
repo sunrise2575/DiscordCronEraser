@@ -134,7 +134,15 @@ func main() {
 	})
 
 	discord.AddHandler(func(sess *discordgo.Session, msg *discordgo.MessageCreate) {
+		if len(msg.Content) == 0 {
+			return
+		}
+
 		arg := strings.Fields(msg.Content)
+
+		if len(arg) == 0 {
+			return
+		}
 
 		if cmd, ok := commands[arg[0]]; ok {
 			if msg.Author.ID != discord.State.User.ID {
