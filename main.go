@@ -135,12 +135,13 @@ func main() {
 
 	discord.AddHandler(func(sess *discordgo.Session, msg *discordgo.MessageCreate) {
 		if len(msg.Content) == 0 {
+			treatMessageCreate(connInfo, sess, msg)
 			return
 		}
 
 		arg := strings.Fields(msg.Content)
-
 		if len(arg) == 0 {
+			treatMessageCreate(connInfo, sess, msg)
 			return
 		}
 
@@ -154,6 +155,7 @@ func main() {
 		} else {
 			treatMessageCreate(connInfo, sess, msg)
 		}
+
 	})
 
 	// Ctrl+C를 받아서 프로그램 자체를 종료하는 부분. os 신호를 받는다
