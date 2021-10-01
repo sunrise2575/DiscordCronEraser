@@ -99,6 +99,18 @@ func main() {
 		log.Println("bye")
 	}()
 
+	if e := discord.UpdateStatusComplex(discordgo.UpdateStatusData{
+		Activities: []*discordgo.Activity{
+			{
+				Name: "1시간 넘는 메시지 삭제",
+				Type: discordgo.ActivityTypeGame,
+			},
+		},
+	}); e != nil {
+		log.Fatalln("error update status complex,", e)
+		return
+	}
+
 	// Guild에 초대 / 접속했을 때 실행하는 부분
 	discord.AddHandler(func(session *discordgo.Session, event *discordgo.GuildCreate) {
 		// Guild에 허용된 채널 읽기

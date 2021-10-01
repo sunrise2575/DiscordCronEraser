@@ -82,7 +82,7 @@ func cronDelete(connInfo connInfoType, sess *discordgo.Session, minute int) {
 			panic(e)
 		}
 		if affected > 0 {
-			log.Printf("%v개의 오래된 메시지가 삭제됨!", affected)
+			log.Printf("%v is deleted by timeout", affected)
 		}
 	}
 
