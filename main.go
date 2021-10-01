@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -120,12 +121,14 @@ func main() {
 	})
 
 	discord.AddHandler(func(sess *discordgo.Session, msg *discordgo.MessageCreate) {
-		if cmd, ok := commands[msg.Content]; ok {
-			if e := sess.ChannelMessageDelete(msg.ChannelID, msg.ID); e != nil {
-				log.Println(e)
-			}
+		arg := strings.Fields(msg.Content)
+
+		if cmd, ok := commands[arg[0]]; ok {
 			if msg.Author.ID != discord.State.User.ID {
-				cmd.Callback(sess, msg.Message)
+				if e := sess.ChannelMessageDelete(msg.ChannelID, msg.ID); e != nil {
+					log.Println(e)
+				}
+				cmd.Callback(arg, sess, msg.Message)
 			}
 		} else {
 			treatMessageCreate(connInfo, sess, msg)
