@@ -44,9 +44,9 @@ func main() {
 		dbTxExec(tx, `
 		CREATE TABLE bot_table (
 			channel_id BIGINT NOT NULL,
-			author_id bIGINT NOT NULL,
-			timestamp DATETIME(6) NOT NULL,
+			author_id BIGINT NOT NULL,
 			message_id BIGINT NOT NULL,
+			timestamp DATETIME(6) NOT NULL,
 			PRIMARY KEY (message_id)
 		)`)
 		dbTxExec(tx, `CREATE INDEX chan_idx ON bot_table (channel_id)`)

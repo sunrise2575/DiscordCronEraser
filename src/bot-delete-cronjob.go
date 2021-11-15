@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"strconv"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -14,15 +15,15 @@ func cronDelete(sess *discordgo.Session, minute int) {
 	// 트랜잭션 시작
 	dbTx(db, func(tx *sql.Tx) bool {
 		chanMsgIDs := make(map[string][]string)
-		now := time.Now().Format("2006-01-02 15:04:05.999999")
+		now := time.Now().Format("2006-01-02 15:04:05.999")
 
 		exist := false
 
 		result := dbTxQuery(tx, `
 			SELECT channel_id, message_id
 			FROM bot_table
-			WHERE timestamp < datetime(?, '-? minute')
-			`, now, minute)
+			WHERE timestamp < datetime(?, '-`+strconv.Itoa(minute)+` minutes')
+		`, now)
 
 		for _, row := range result {
 			exist = true
@@ -47,8 +48,8 @@ func cronDelete(sess *discordgo.Session, minute int) {
 		//affected := dbTxExec(tx, `
 		dbTxExec(tx, `
 			DELETE FROM bot_table
-			WHERE timestamp < datetime(?, '-? minute')
-			`, now, minute)
+			WHERE timestamp < datetime(?, '-`+strconv.Itoa(minute)+` minutes')
+			`, now)
 
 		/*
 			if affected > 0 {
