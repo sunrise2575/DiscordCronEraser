@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/tidwall/gjson"
 )
 
 type DiscordCommand struct {
@@ -14,32 +15,32 @@ type DiscordCommand struct {
 
 type DiscordCommands map[string]DiscordCommand
 
-func makeCommands(connInfo connInfoType) DiscordCommands {
+func makeCommands(conf gjson.Result) DiscordCommands {
 	// 커맨드 만든다
 	result := make(DiscordCommands)
 
 	result["."] = DiscordCommand{
 		Description: "직전에 입력한 내 메시지 1개를 삭제합니다",
 		Callback: func(arg []string, sess *discordgo.Session, msg *discordgo.Message) {
-			treatDeleteSingle(connInfo, sess, msg)
+			treatDeleteSingle(sess, msg)
 		},
 	}
 
 	result[".."] = DiscordCommand{
 		Description: "내 메시지만 모두 삭제합니다",
 		Callback: func(arg []string, sess *discordgo.Session, msg *discordgo.Message) {
-			treatDeleteMe(connInfo, sess, msg)
+			treatDeleteMe(sess, msg)
 		},
 	}
 
 	result["..."] = DiscordCommand{
 		Description: "모든 메시지를 삭제합니다 (봇 만든 사람 전용)",
 		Callback: func(arg []string, sess *discordgo.Session, msg *discordgo.Message) {
-			if msg.Author.ID != "293241938444943362" {
+			if msg.Author.ID != conf.Get("admin_user_id").String() {
 				log.Println("try to delete all message:", msg.Author.Username)
 				return
 			}
-			treatDeleteAll(connInfo, sess, msg)
+			treatDeleteAll(sess, msg)
 		},
 	}
 
