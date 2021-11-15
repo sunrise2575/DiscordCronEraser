@@ -35,7 +35,7 @@ func readFileAsString(path string) string {
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	conf := gjson.Parse(readFileAsString("./config.json"))
+	conf := gjson.Parse(readFileAsString("../config.json"))
 
 	db := dbConnect()
 	dbExec(db, `
