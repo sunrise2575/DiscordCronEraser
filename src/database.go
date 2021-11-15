@@ -3,10 +3,12 @@ package main
 import (
 	"database/sql"
 	"log"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func dbConnect() *sql.DB {
-	db, e := sql.Open("sqlite3", ":memory:")
+	db, e := sql.Open("sqlite3", "file::memory:?mode=memory&cache=shared")
 	if e != nil {
 		log.Fatal(e)
 	}

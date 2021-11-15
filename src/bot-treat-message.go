@@ -9,7 +9,7 @@ func treatMessageCreate(sess *discordgo.Session, msg *discordgo.MessageCreate) {
 	defer db.Close()
 
 	dbExec(db, `
-		INSERT IGNORE INTO bot_table (channel_id,author_id,timestamp,message_id)
+		INSERT OR IGNORE INTO bot_table (channel_id,author_id,timestamp,message_id)
 		VALUES (?,?,?,?)
 		`, msg.ChannelID, msg.Author.ID, getTime(msg.Timestamp), msg.ID)
 }

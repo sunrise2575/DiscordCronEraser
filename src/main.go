@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"io/ioutil"
 	"log"
 	"os"
@@ -38,16 +39,23 @@ func main() {
 	conf := gjson.Parse(readFileAsString("../config.json"))
 
 	db := dbConnect()
-	dbExec(db, `
+	if !dbTx(db, func(tx *sql.Tx) bool {
+		dbTxExec(tx, `
 		CREATE TABLE bot_table (
-			channel_id bigint not null,
-			author_id bigint not null,
-			timestamp datetime(6) not null,
-			message_id bigint not null,
-			unique key (message_id),
-			INDEX chan_idx (channel_id),
-			INDEX chan_auth_idx (channel_id, author_id)
+			channel_id BIGINT NOT NULL,
+			author_id bIGINT NOT NULL,
+			timestamp DATETIME(6) NOT NULL,
+			message_id BIGINT NOT NULL,
+			PRIMARY KEY (message_id)
 		)`)
+		dbTxExec(tx, `CREATE INDEX chan_idx ON bot_table (channel_id)`)
+		dbTxExec(tx, `CREATE INDEX chan_auth_idx ON bot_table (channel_id, author_id)`)
+
+		return true
+	}) {
+		log.Fatalln("initialize DB falied")
+		return
+	}
 	log.Println("initialize DB complete")
 	defer db.Close()
 

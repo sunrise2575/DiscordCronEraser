@@ -21,7 +21,7 @@ func cronDelete(sess *discordgo.Session, minute int) {
 		result := dbTxQuery(tx, `
 			SELECT channel_id, message_id
 			FROM bot_table
-			WHERE timestamp < DATE_SUB(?, INTERVAL ? MINUTE)
+			WHERE timestamp < datetime(?, '-? minute')
 			`, now, minute)
 
 		for _, row := range result {
@@ -47,7 +47,7 @@ func cronDelete(sess *discordgo.Session, minute int) {
 		//affected := dbTxExec(tx, `
 		dbTxExec(tx, `
 			DELETE FROM bot_table
-			WHERE timestamp < DATE_SUB(?, INTERVAL ? MINUTE)
+			WHERE timestamp < datetime(?, '-? minute')
 			`, now, minute)
 
 		/*

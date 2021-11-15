@@ -27,7 +27,7 @@ func treatInitialStart(sess *discordgo.Session, channel *discordgo.Channel) {
 			log.Printf("read message: %v, [%v] in [%v]\n", len(messages), channel.Name, guild.Name)
 
 			// 읽은 메시지 정보 중 필요한 정보만 bulk insert하는 query를 생성해서 실행한다
-			query := "INSERT IGNORE INTO bot_table (channel_id, author_id, timestamp, message_id) VALUES "
+			query := "INSERT OR IGNORE INTO bot_table (channel_id, author_id, timestamp, message_id) VALUES "
 			for i, m := range messages {
 				query += fmt.Sprintf("(%v,%v,'%v',%v)", m.ChannelID, m.Author.ID, getTime(m.Timestamp), m.ID)
 				if i < len(messages)-1 {
