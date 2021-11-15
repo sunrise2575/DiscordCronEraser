@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -92,7 +93,7 @@ func main() {
 	if e := discord.UpdateStatusComplex(discordgo.UpdateStatusData{
 		Activities: []*discordgo.Activity{
 			{
-				Name: "1시간 넘는 메시지 삭제",
+				Name: fmt.Sprintf("%d분 넘는 메시지 삭제", int(conf.Get("minute").Int())),
 				Type: discordgo.ActivityTypeGame,
 			},
 		},
