@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"log"
 	"strconv"
 	"time"
 
@@ -23,6 +24,7 @@ func cronDelete(sess *discordgo.Session, minute int) {
 			SELECT channel_id, message_id
 			FROM bot_table
 			WHERE timestamp < datetime(?, '-`+strconv.Itoa(minute)+` minutes')
+			LIMIT 100
 		`, now)
 
 		for _, row := range result {
@@ -41,21 +43,24 @@ func cronDelete(sess *discordgo.Session, minute int) {
 		for channelID, messageIDs := range chanMsgIDs {
 			// bulk delete 실행
 			if e := sess.ChannelMessagesBulkDelete(channelID, messageIDs); e != nil {
+				log.Println(e)
 				return false // rollback
 			}
 		}
 
-		//affected := dbTxExec(tx, `
-		dbTxExec(tx, `
+		affected := dbTxExec(tx, `
 			DELETE FROM bot_table
-			WHERE timestamp < datetime(?, '-`+strconv.Itoa(minute)+` minutes')
+			WHERE message_id IN (
+				SELECT message_id
+				FROM bot_table
+				WHERE timestamp < datetime(?, '-`+strconv.Itoa(minute)+` minutes')
+				LIMIT 100
+			)
 			`, now)
 
-		/*
-			if affected > 0 {
-				log.Printf("%v is deleted by timeout", affected)
-			}
-		*/
+		if affected > 0 {
+			log.Printf("delete %v message(s) at cronDelete", affected)
+		}
 
 		return true // commit
 	})

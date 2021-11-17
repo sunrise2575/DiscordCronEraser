@@ -36,15 +36,21 @@ func treatDeleteSingle(sess *discordgo.Session, msg *discordgo.Message) {
 			// 이미 지워졌는지 아닌지 판단
 			if !strings.Contains(e.Error(), `"code": 10008`) {
 				// 이미 지워졌는데 오류가 났다? 뭔가 이상하다
+				log.Println(e)
 				return false // rollback
 			}
 		}
 
 		// 가장 최근의 메시지를 지운다
-		dbTxExec(tx, `
+		affected := dbTxExec(tx, `
 			DELETE FROM bot_table
-			WHERE channel_id = ? AND author_id = ? AND message_id = ?
-			`, msg.ChannelID, msg.Author.ID, messageID)
+			WHERE message_id = ?
+			`, messageID)
+
+		if affected > 0 {
+			log.Printf("delete %v message(s) at treatDeleteSingle by user '%v' (user ID: %v, channel ID: %v)",
+				affected, msg.Author.Username, msg.Author.ID, msg.ChannelID)
+		}
 
 		return true // commit
 	})

@@ -125,12 +125,12 @@ func main() {
 	})
 
 	discord.AddHandler(func(sess *discordgo.Session, msg *discordgo.MessageCreate) {
-		// filter command message
-		if len(msg.Content) > 0 {
-			arg := strings.Fields(msg.Content)
-			if len(arg) > 0 {
-				if cmd, ok := commands[arg[0]]; ok {
-					if msg.Author.ID != discord.State.User.ID {
+		if msg.Author.ID != discord.State.User.ID {
+			// filter command message
+			if len(msg.Content) > 0 {
+				arg := strings.Fields(msg.Content)
+				if len(arg) > 0 {
+					if cmd, ok := commands[arg[0]]; ok {
 						if e := sess.ChannelMessageDelete(msg.ChannelID, msg.ID); e != nil {
 							log.Println(e)
 						}

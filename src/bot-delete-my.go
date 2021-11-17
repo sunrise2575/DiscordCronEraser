@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"log"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -10,44 +11,49 @@ func treatDeleteMe(sess *discordgo.Session, msg *discordgo.Message) {
 	db := dbConnect()
 	defer db.Close()
 
-	dbTx(db, func(tx *sql.Tx) bool {
-		exist := false
-		messageIDs := []string{}
-		result := dbTxQuery(tx, `
-			SELECT message_id
-			FROM bot_table
-			WHERE channel_id = ? AND author_id = ?
-			`, msg.ChannelID, msg.Author.ID)
+	complete := false
+	for !complete {
+		dbTx(db, func(tx *sql.Tx) bool {
+			messageIDs := []string{}
 
-		for _, row := range result {
-			exist = true
-			messageIDs = append(messageIDs, row[0])
-		}
+			result := dbTxQuery(tx, `
+				SELECT message_id
+				FROM bot_table
+				WHERE channel_id = ? AND author_id = ?
+				LIMIT 100
+				`, msg.ChannelID, msg.Author.ID)
 
-		if !exist {
-			return false // rollback
-		}
-
-		// bulk delete 실행. 한번에 100개까지만 지우기 때문에 반복해서 지워야 한다
-		for i := 0; i < len(messageIDs); i += 100 {
-			if len(messageIDs)-i >= 100 {
-				if e := sess.ChannelMessagesBulkDelete(msg.ChannelID, messageIDs[i:i+100]); e != nil {
-					return false // rollback
-				}
-			} else {
-				// 끝에 100개보다 덜 남은 경우
-				if e := sess.ChannelMessagesBulkDelete(msg.ChannelID, messageIDs[i:]); e != nil {
-					return false // rollback
-				}
+			for _, row := range result {
+				messageIDs = append(messageIDs, row[0])
 			}
-		}
 
-		// 가장 최근의 메시지를 지운다
-		dbTxExec(tx, `
-			DELETE FROM bot_table
-			WHERE channel_id = ? AND author_id = ?
-			`, msg.ChannelID, msg.Author.ID)
+			if len(messageIDs) == 0 {
+				complete = true
+				return false // rollback
+			}
 
-		return true // commit
-	})
+			if e := sess.ChannelMessagesBulkDelete(msg.ChannelID, messageIDs); e != nil {
+				log.Println(e)
+				return false // rollback
+			}
+
+			// 가장 최근의 메시지를 지운다
+			affected := dbTxExec(tx, `
+				DELETE FROM bot_table
+				WHERE message_id IN (
+					SELECT message_id
+					FROM bot_table
+					WHERE channel_id = ? AND author_id = ?
+					LIMIT 100
+				)
+				`, msg.ChannelID, msg.Author.ID)
+
+			if affected > 0 {
+				log.Printf("delete %v message(s) at treatDeleteMe by user '%v' (user ID: %v, channel ID: %v)",
+					affected, msg.Author.Username, msg.Author.ID, msg.ChannelID)
+			}
+
+			return true // commit
+		})
+	}
 }
