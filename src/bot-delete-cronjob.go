@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -43,8 +44,11 @@ func cronDelete(sess *discordgo.Session, minute int) {
 		for channelID, messageIDs := range chanMsgIDs {
 			// bulk delete 실행
 			if e := sess.ChannelMessagesBulkDelete(channelID, messageIDs); e != nil {
-				log.Println(e)
-				return false // rollback
+				if !strings.Contains(e.Error(), `"code": 10008`) {
+					// 이미 지워졌는데 오류가 났다? 뭔가 이상하다
+					log.Println(e)
+					return false // rollback
+				}
 			}
 		}
 
