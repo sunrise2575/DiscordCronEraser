@@ -27,20 +27,20 @@ func makeCommands(conf gjson.Result) DiscordCommands {
 	}
 
 	result[".."] = DiscordCommand{
-		Description: "내 메시지만 모두 삭제합니다",
+		Description: "내 메시지만 최신 100개를 삭제합니다",
 		Callback: func(arg []string, sess *discordgo.Session, msg *discordgo.Message) {
-			treatDeleteMe(sess, msg)
+			treatDeleteMe100(sess, msg)
 		},
 	}
 
 	result["..."] = DiscordCommand{
-		Description: "모든 메시지를 삭제합니다 (봇 만든 사람 전용)",
+		Description: "어떤 메시지든 최신 100개를 삭제합니다 (봇 만든 사람 전용)",
 		Callback: func(arg []string, sess *discordgo.Session, msg *discordgo.Message) {
 			if msg.Author.ID != conf.Get("admin_user_id").String() {
 				log.Println("try to delete all message:", msg.Author.Username)
 				return
 			}
-			treatDeleteAll(sess, msg)
+			treatDelete100(sess, msg)
 		},
 	}
 
