@@ -33,14 +33,25 @@ func makeCommands(conf gjson.Result) DiscordCommands {
 		},
 	}
 
-	result["..."] = DiscordCommand{
+	result[".!"] = DiscordCommand{
 		Description: "어떤 메시지든 최신 100개를 삭제합니다 (봇 만든 사람 전용)",
 		Callback: func(arg []string, sess *discordgo.Session, msg *discordgo.Message) {
 			if msg.Author.ID != conf.Get("admin_user_id").String() {
-				log.Println("try to delete all message:", msg.Author.Username)
+				log.Println("try to delete all message but failed:", msg.Author.Username)
 				return
 			}
 			treatDelete100(sess, msg)
+		},
+	}
+
+	result[".?"] = DiscordCommand{
+		Description: "봇이 고장났을 경우 메시지를 다시 읽어 DB를 완전하게 만듭니다 (봇 만든 사람 전용)",
+		Callback: func(arg []string, sess *discordgo.Session, msg *discordgo.Message) {
+			if msg.Author.ID != conf.Get("admin_user_id").String() {
+				log.Println("treat refresh but failed:", msg.Author.Username)
+				return
+			}
+			treatRefresh(sess, msg)
 		},
 	}
 

@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"log"
 	"strconv"
-	"strings"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -33,12 +32,8 @@ func treatDeleteSingle(sess *discordgo.Session, msg *discordgo.Message) {
 
 		// 지운다
 		if e := sess.ChannelMessageDelete(msg.ChannelID, strconv.Itoa(messageID)); e != nil {
-			// 이미 지워졌는지 아닌지 판단
-			if !strings.Contains(e.Error(), `"code": 10008`) {
-				// 이미 지워졌는데 오류가 났다? 뭔가 이상하다
-				log.Println(e)
-				return false // rollback
-			}
+			log.Println(e)
+			return false // rollback
 		}
 
 		// 가장 최근의 메시지를 지운다
